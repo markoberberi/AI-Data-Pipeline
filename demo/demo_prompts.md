@@ -1,0 +1,132 @@
+# Demo Prompts
+
+## Pre-Demo: Wake the Database (run 10 min before, NOT on stage)
+
+```
+Run a quick sqlcmd query against our Azure SQL database to wake it up: SELECT GETDATE()
+```
+
+## Pre-Demo: Verify Setup (run 5 min before, NOT on stage)
+
+```
+Verify our setup: 1) Check the USPTO API key is configured, 2) Test sqlcmd can connect to Azure SQL, 3) Confirm pyodbc is installed. Just run quick checks for each.
+```
+
+## On Stage: /clear first
+
+Run `/clear` to start with a clean conversation.
+
+---
+
+## Prompt 1: The Main Demo (paste this during the presentation)
+
+```xml
+<pipeline-request>
+  <context>
+    I need to build a patent intelligence database for Intel Corporation — the largest
+    tech employer here in Phoenix. Let's use our Azure SQL Database and the USPTO patent API.
+  </context>
+
+  <rules>
+    - Announce each step before executing it (e.g., "Step 3: Searching USPTO...")
+    - Show every SQL query and its results inline — the audience needs to see what's happening
+    - Keep all output concise: tables over paragraphs, top 10 over full dumps
+    - One script per task — no unnecessary helper files or abstractions
+    - Confirm success at each step with a brief summary before moving to the next
+    - Save charts to the output/ directory and confirm file paths
+  </rules>
+
+  <steps>
+    <step name="create-ticket">
+      Create an Azure DevOps work item to track this pipeline build.
+      Use az boards to create a Task titled "Build Intel Patent Intelligence Pipeline".
+    </step>
+
+    <step name="connect-discover">
+      Connect to our Azure SQL Database and show me what tables currently exist
+      (should be empty — we're building from scratch). Note: the free tier
+      auto-pauses after inactivity — the first query may take ~30 seconds to
+      wake the database up. Use a 60-second login timeout (-l 60) and if the
+      first attempt fails, wait a moment and retry once.
+    </step>
+
+    <step name="create-schema">
+      Create a PATENTS table optimized for T-SQL with columns for
+      patent_number (PK), title, abstract, assignee, inventors (JSON as NVARCHAR(MAX)),
+      filing_date, grant_date, cpc_codes (JSON as NVARCHAR(MAX)), search_query, category,
+      and timestamps. Add indexes on assignee and filing_date.
+    </step>
+
+    <step name="search-uspto">
+      Use the patent search tools in tools/ to find Intel Corporation patents.
+      Search by assignee "Intel" with a limit of 50.
+    </step>
+
+    <step name="load-data">
+      Write a Python script using pyodbc to load those patent results into
+      our Azure SQL table. Use parameterized MERGE statements for upsert logic. Execute it.
+    </step>
+
+    <step name="analyze">
+      Write T-SQL analytical queries and save each one to the sql/ directory
+      as a numbered .sql file before executing it. The audience will copy these
+      into the Azure Portal Query Editor to validate results visually.
+
+      Queries to write and run:
+      1. Summary stats — total patents loaded, earliest/latest filing dates,
+         unique assignees (save as sql/03_patent_count.sql)
+      2. Filing trends — patent count by year, ordered chronologically
+         (save as sql/04_filing_trends.sql)
+      3. Top inventors — parse the inventors JSON array using CROSS APPLY
+         OPENJSON, group by inventor name, top 10 (save as sql/05_top_inventors.sql)
+      4. Technology categories — parse cpc_codes JSON array using CROSS APPLY
+         OPENJSON, group by first 4 characters of CPC code, top 10
+         (save as sql/06_cpc_breakdown.sql)
+    </step>
+
+    <step name="visualize">
+      Create matplotlib charts from the query results and save as PNG files
+      to the output/ directory:
+      1. Filing trends by year (bar or line chart)
+      2. Top technology categories by CPC code (horizontal bar chart)
+    </step>
+
+    <step name="report">
+      Generate a markdown executive summary of Intel's patent portfolio.
+    </step>
+
+    <step name="close-ticket">
+      Update the Azure DevOps work item to "Done". Add a discussion comment
+      summarizing what was built: table created, patents loaded, analysis complete.
+    </step>
+  </steps>
+
+  <resources>
+    The patent search tools are in the tools/ directory. The Azure SQL connection details
+    are in the .env file. Let's build this entire pipeline right now.
+  </resources>
+</pipeline-request>
+```
+
+---
+
+## Prompt 2: Audience Participation (optional, use during Q&A if time allows)
+
+```xml
+<follow-up>
+  The audience wants to see [COMPANY NAME]. Search the USPTO for their patents using
+  search_by_assignee("[COMPANY NAME]", limit=20), load the results into our PATENTS table,
+  and give me a quick summary of what they're patenting.
+</follow-up>
+```
+
+---
+
+## Prompt 3: Quick Follow-Up Analysis (optional, if demo finishes early)
+
+```xml
+<follow-up>
+  Compare Intel's patent activity to [COMPANY NAME]'s. Run a query showing both companies'
+  filing trends side by side, and create a comparison chart.
+</follow-up>
+```
